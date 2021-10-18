@@ -2,6 +2,8 @@
 #![no_std]
 #![no_main]
 
+use core::fmt;
+
 use cortex_m_rt::entry;
 use defmt::*;
 use defmt_rtt as _;
@@ -24,6 +26,11 @@ use hal::{
     },
     spi::Spi,
     watchdog::Watchdog,
+};
+
+use embedded_hal::{
+    blocking::spi, 
+    digital::v2::OutputPin
 };
 
 use nb::block;
@@ -103,5 +110,20 @@ fn main() -> ! {
         led_pin.set_high().unwrap();
         delay.delay_ms(5000);
     }
+}
 
+fn print_status<SPI, CS>(ll: &mut dw1000::ll::DW1000<SPI, CS>) 
+ where
+    SPI: spi::Transfer<u8> + spi::Write<u8>,
+    <SPI as spi::Transfer<u8>>::Error: fmt::Debug,
+    <SPI as spi::Write<u8>>::Error: fmt::Debug,
+    CS: OutputPin,
+    <CS as OutputPin>::Error: fmt::Debug,
+{
+    let status = ll.sys_status().read().unwrap();
+    info!("automatic acknowledge trigger: {} receiver preamble detected: {} receiver sfd detected: {} receiver data frame ready: {}", 
+          status.aat(),
+          status.rxprd(),
+          status.rxsfdd(),
+          status.rxdfr());
 }
